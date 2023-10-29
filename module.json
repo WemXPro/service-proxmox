@@ -1,0 +1,11 @@
+{
+    "name": "Proxmox",
+    "alias": "proxmox",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "App\\Services\\Proxmox\\Providers\\ProxmoxServiceProvider"
+    ],
+    "files": []
+}

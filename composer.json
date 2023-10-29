@@ -1,0 +1,24 @@
+{
+    "name": "wemx/service-proxmox",
+    "type": "laravel-module",
+    "description": "A proxmox service for developers",
+    "authors": [
+        {
+            "name": "WemX",
+            "email": "mubeen@wemx.net"
+        }
+    ],
+    "extra": {
+        "module-dir": "app/Services",
+        "laravel": {
+            "providers": [],
+            "aliases": {
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\Services\\Proxmox\\": ""
+        }
+    }
+}

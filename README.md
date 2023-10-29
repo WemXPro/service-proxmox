@@ -1,2 +1,2 @@
 # service-proxmox
-Proxmox integration for WemX
+A proxmox service for developers to get started with
