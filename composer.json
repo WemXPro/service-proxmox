@@ -13,6 +13,7 @@
         "laravel": {
             "providers": [],
             "aliases": {
+
             }
         }
     },
