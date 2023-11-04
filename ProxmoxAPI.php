@@ -17,10 +17,10 @@ class ProxmoxAPI
             'Accept' => 'application/json',
             'Content-Type' => 'application/json'
         ])->$method($url, $data);
-
+        
         if($response->failed())
         {
-            $this->exception();
+            throw new \Exception("[Proxmox] Failed to connect to the API. Ensure the API details and hostname are valid.");
         }
 
         return $response;
@@ -31,7 +31,29 @@ class ProxmoxAPI
     */
     public function getNodes()
     {
-        return collect($this->api('get', '/nodes')->object()->data ?? $this->exception());
+        return collect($this->api('get', '/nodes')->object()->data);
+    }
+
+    /**
+     * Get the storage of a node groups as a Laravel collection
+    */
+    public function getNodeStorage($node)
+    {
+        return collect($this->api('get', "/nodes/{$node}/storage")->object()->data);
+    }
+
+    /**
+     * Get the storage of a node groups as a Laravel collection
+    */
+    public function getNodeISOImages($node, $storage)
+    {
+        $response = $this->api('get', "/nodes/{$node}/storage/{$storage}/content")['data'];
+        $contents = collect($response);
+        $isoImages = $contents->filter(function($item) {
+            return $item['content'] == 'iso';
+        })->pluck('volid', 'volid');  // Use ISO volid as both key and value for select options
+    
+        return $isoImages->toArray();
     }
 
     /**
@@ -39,7 +61,7 @@ class ProxmoxAPI
     */
     public function getStorage()
     {
-        return collect($this->api('get', '/storage')->object()->data ?? $this->exception());
+        return collect($this->api('get', '/storage')->object()->data);
     }
 
     /**
@@ -47,14 +69,50 @@ class ProxmoxAPI
     */
     public function getPools()
     {
-        return collect($this->api('get', '/pools')->object()->data ?? $this->exception());
+        return collect($this->api('get', '/pools')->object()->data);
     }
 
     /**
-     * Throw an exception
-    */
-    protected function exception()
+     * Create a new VM.
+     */
+    public function createVM($node, array $data)
     {
-        throw new \Exception("[Proxmox] Failed to connect to the API. Please ensure the API details and hostname are valid.");
+        $vmid = $this->api('get', '/cluster/nextid')['data'];
+        $ide2 = ($data['vm_cdrom'] ?? '' == 'iso') ? ['ide2' => "{$data['iso_image']},media=cdrom"] : [];
+    
+        $response = $this->api('post', "/nodes/{$node}/qemu", array_merge([
+            'vmid' => $vmid,
+            'cores' => $data['cores'] ?? 1,
+            'sockets' => $data['sockets'] ?? 1,
+            'memory' => $data['memory'] ?? 1024,
+            'scsi0' => "local-lvm:{$data['disk']}",
+            'ostype' => $data['os_type'] ?? 'l26',
+        ], $ide2));
+
+        return ['node' => $node, 'vmid' => $vmid];
+    }
+
+    /**
+     * Suspend a VM
+     */
+    public function suspendVM($node, $vmid)
+    {
+        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/suspend");
+    }
+
+    /**
+     * Unsuspend a VM
+     */
+    public function unsuspendVM($node, $vmid)
+    {
+        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/resume");
+    }
+
+    /**
+     * Terminate a VM
+     */
+    public function terminateVM($node, $vmid)
+    {
+        return $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
     }
 }
