@@ -230,16 +230,6 @@ class Service implements ServiceInterface
         return [];
     }
 
-    /**
-     * Define buttons shown at order management page
-     *
-     * @return array
-     */
-    public static function setServiceButtons(Order $order): array
-    {
-        return [];    
-    }
-
     protected static function api()
     {
         return new ProxmoxAPI;
@@ -254,6 +244,7 @@ class Service implements ServiceInterface
     public function create(array $data = [])
     {
         $package = $this->order->package;
+        $user = $this->order->user;
         $order = $this->order;
 
         $response = self::api()->createVM($package->data('node', 'pve2'), [
@@ -268,6 +259,24 @@ class Service implements ServiceInterface
 
         // store the VMID
         $order->update(['data' => $response]);
+
+        // create Proxmox User
+        $realm = 'pve';
+        $userData = [
+            'username' => $user->username . rand(100, 999),
+            'email' => $user->email,
+            'password' => str_random(15),
+        ];
+
+        self::api()->createUser($userData, $realm);
+
+        $order->createExternalUser([
+            'external_id' => "{$userData['username']}@{$realm}",
+            'username' => $userData['username'],
+            'password' => $userData['password'],
+        ]);
+
+        self::api()->giveUserAccessToVM($order->data['vmid'], "{$userData['username']}@{$realm}");
     }
 
     /**

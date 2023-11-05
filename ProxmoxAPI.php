@@ -20,6 +20,7 @@ class ProxmoxAPI
         
         if($response->failed())
         {
+            // dd($response);
             throw new \Exception("[Proxmox] Failed to connect to the API. Ensure the API details and hostname are valid.");
         }
 
@@ -70,6 +71,30 @@ class ProxmoxAPI
     public function getPools()
     {
         return collect($this->api('get', '/pools')->object()->data);
+    }
+
+    /**
+     * Create new Proxmox User
+     */
+    public function createUser(array $user, $realm = 'pam')
+    {
+        $response = $this->api('post', '/access/users', [
+            'userid' => "{$user['username']}@{$realm}",
+            'email' => $user['email'],
+            'password' => $user['password'],
+        ]);
+    }
+
+    /**
+     * Give a user access to a VM
+     */
+    public function giveUserAccessToVM($vmid, $user)
+    {
+        $this->api('put', '/access/acl', [
+            'path' => "/vms/{$vmid}",
+            'roles' => "PVEVMUser",
+            'users' => $user, // in root@pam format
+        ]);
     }
 
     /**
