@@ -260,23 +260,45 @@ class Service implements ServiceInterface
         // store the VMID
         $order->update(['data' => $response]);
 
-        // create Proxmox User
-        $realm = 'pve';
-        $userData = [
-            'username' => $user->username . rand(100, 999),
-            'email' => $user->email,
-            'password' => str_random(15),
-        ];
+        if(!$order->hasExternalUser()) {
+            // create Proxmox User
+            $realm = 'pve';
+            $userData = [
+                'username' => $user->username . rand(100, 999),
+                'email' => $user->email,
+                'password' => str_random(15),
+            ];
 
-        self::api()->createUser($userData, $realm);
+            self::api()->createUser($userData, $realm);
 
-        $order->createExternalUser([
-            'external_id' => "{$userData['username']}@{$realm}",
-            'username' => $userData['username'],
-            'password' => $userData['password'],
+            $order->createExternalUser([
+                'external_id' => "{$userData['username']}@{$realm}",
+                'username' => $userData['username'],
+                'password' => $userData['password'],
+            ]);
+
+            $this->emailDetails($user, $userData['username'], $userData['password']);
+        }
+
+        $proxmoxUser = $order->getExternalUser();
+        self::api()->giveUserAccessToVM($order->data['vmid'], $proxmoxUser->external_id);
+    }
+
+    protected function emailDetails($user, $username, $password): void
+    {
+        $user->email([
+            'subject' => 'Proxmox Account',
+            'content' => "
+                Your Proxmox Account details: <br> <br>
+                - Username: {$username} <br>
+                - Password: {$password} <br>
+                - Realm: Proxmox VE authentication server <br>
+            ",
+            'button' => [
+                'name' => 'Proxmox Panel',
+                'url' => 'https://' . settings('proxmox::hostname') . ':' . settings('proxmox::port'),
+            ],
         ]);
-
-        self::api()->giveUserAccessToVM($order->data['vmid'], "{$userData['username']}@{$realm}");
     }
 
     /**
@@ -316,5 +338,4 @@ class Service implements ServiceInterface
         $VM = $this->order->data;
         self::api()->terminateVM($VM['node'], (int) $VM['vmid']);
     }
-
 }

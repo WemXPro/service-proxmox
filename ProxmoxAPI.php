@@ -20,7 +20,7 @@ class ProxmoxAPI
         
         if($response->failed())
         {
-            // dd($response);
+            dd($response);
             throw new \Exception("[Proxmox] Failed to connect to the API. Ensure the API details and hostname are valid.");
         }
 
@@ -94,6 +94,17 @@ class ProxmoxAPI
             'path' => "/vms/{$vmid}",
             'roles' => "PVEVMUser",
             'users' => $user, // in root@pam format
+        ]);
+    }
+
+    /**
+     * Give a user access to a VM
+     */
+    public function changeUserPassword($user_id, $newPassword)
+    {
+        $this->api('put', '/access/password', [
+            'userid' => $user_id,
+            'password' => $newPassword,
         ]);
     }
 
