@@ -50,7 +50,7 @@ class ProxmoxServiceProvider extends ServiceProvider
      * 
      * @return bool
      */
-    protected $views = false;
+    protected $views = true;
 
     /**
      * Register language (Resources/lang)

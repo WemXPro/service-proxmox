@@ -129,6 +129,16 @@ class ProxmoxAPI
     }
 
     /**
+     * Get resource usage and status for a specific VM
+     */
+    public function getVMResourceUsage($node, $vmid)
+    {
+        $response = $this->api('get', "/nodes/{$node}/qemu/{$vmid}/status/current");
+        
+        return $response->json()['data'];
+    }
+
+    /**
      * Suspend a VM
      */
     public function suspendVM($node, $vmid)
