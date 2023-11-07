@@ -49,18 +49,12 @@ class Service implements ServiceInterface
     {
         return [
             [
+                "col" => "col-12",
                 "key" => "proxmox::hostname",
                 "name" => "Hostname",
-                "description" => "Hostname of your Proxmox panel i.e host.example.com",
-                "type" => "text",
+                "description" => "Hostname of your Proxmox panel i.e https://host.example.com:8008",
+                "type" => "url",
                 "rules" => ['required'], // laravel validation rules
-            ],
-            [
-                "key" => "proxmox::port",
-                "name" => "Port",
-                "description" => "Hostname of your Proxmox panel i.e host.example.com",
-                "type" => "number",
-                "rules" => ['required', 'numeric'], // laravel validation rules
             ],
             [
                 "key" => "proxmox::token_id",
@@ -93,7 +87,7 @@ class Service implements ServiceInterface
             return [$node->node => $node->node];
         });
 
-        $storage = self::api()->getNodeStorage($package->data('node', 'pve2'))->mapWithKeys(function ($storage, int $key) {
+        $storage = self::api()->getNodeStorage($package->data('node', $nodes->first()))->mapWithKeys(function ($storage, int $key) {
             return [$storage->storage => $storage->storage];
         });
 
@@ -101,7 +95,7 @@ class Service implements ServiceInterface
             return [$pool->poolid => $pool->poolid];
         });
 
-        $images = self::api()->getNodeISOImages($package->data('node', 'pve2'), $package->data('storage', 'local'));
+        $images = self::api()->getNodeISOImages($package->data('node', $nodes->first()), $package->data('storage', 'local'));
 
         return 
         [
@@ -230,9 +224,26 @@ class Service implements ServiceInterface
         return [];
     }
 
+    /**
+     * Init API connection
+     */
     protected static function api()
     {
         return new ProxmoxAPI;
+    }
+
+    /**
+     * Test API connection
+     */
+    public static function testConnection()
+    {
+        try {
+            self::api()->getNodes()->all();
+        } catch(\Exception $error) {
+            return redirect()->back()->withError("Failed to connect to Proxmox. <br><br>[Proxmox] {$error->getMessage()}");
+        }
+
+        return redirect()->back()->withSuccess("Successfully connected with Proxmox");
     }
 
     /**
@@ -247,7 +258,7 @@ class Service implements ServiceInterface
         $user = $this->order->user;
         $order = $this->order;
 
-        $response = self::api()->createVM($package->data('node', 'pve2'), [
+        $response = self::api()->createVM($package->data('node'), [
             'cores' => $package->data('cpu_cores', 1),
             'sockets' => $package->data('cpu_sockets', 1),
             'memory' => $package->data('memory_size', 1024),
@@ -296,7 +307,7 @@ class Service implements ServiceInterface
             ",
             'button' => [
                 'name' => 'Proxmox Panel',
-                'url' => 'https://' . settings('proxmox::hostname') . ':' . settings('proxmox::port'),
+                'url' => settings('proxmox::hostname'),
             ],
         ]);
     }

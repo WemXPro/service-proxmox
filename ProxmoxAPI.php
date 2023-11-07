@@ -11,7 +11,7 @@ class ProxmoxAPI
     */
     public function api($method, $endpoint, $data = [])
     {
-        $url = 'https://' . settings('proxmox::hostname') . ':' . settings('proxmox::port') . '/api2/json' . $endpoint;
+        $url = settings('proxmox::hostname'). '/api2/json' . $endpoint;
         $response = Http::withHeaders([
             'Authorization' => 'PVEAPIToken=' . settings('proxmox::token_id') . '=' . settings('encrypted::proxmox::token_secret'),
             'Accept' => 'application/json',
