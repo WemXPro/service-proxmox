@@ -12,7 +12,7 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @var string
      */
-    protected $moduleNamespace = 'App\Services\Proxmox\Http\Controllers';
+    protected $moduleNamespace = 'App\Services\Proxmox';
 
     /**
      * Called before routes are registered.
@@ -33,11 +33,7 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function map()
     {
-        $this->mapApiRoutes();
-
         $this->mapWebRoutes();
-
-        $this->mapAdminRoutes();
     }
 
     /**
@@ -51,36 +47,6 @@ class RouteServiceProvider extends ServiceProvider
     {
         Route::middleware('web')
             ->namespace($this->moduleNamespace)
-            ->group(module_path('proxmox', '/Routes/web.php'));
-    }
-
-    /**
-     * Define the "admin" routes for the application.
-     *
-     * These routes all receive admin level permission status
-     *
-     * @return void
-     */
-    protected function mapAdminRoutes()
-    {
-        Route::middleware('web', 'admin', 'permission')
-            ->namespace($this->moduleNamespace)
-            ->prefix('admin/proxmox')
-            ->group(module_path('proxmox', '/Routes/admin.php'));
-    }
-
-    /**
-     * Define the "api" routes for the application.
-     *
-     * These routes are typically stateless.
-     *
-     * @return void
-     */
-    protected function mapApiRoutes()
-    {
-        Route::prefix('api')
-            ->middleware('api')
-            ->namespace($this->moduleNamespace)
-            ->group(module_path('proxmox', '/Routes/api.php'));
+            ->group(module_path('proxmox', 'routes.php'));
     }
 }

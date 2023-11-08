@@ -1,8 +1,13 @@
 @php
-use App\Services\Proxmox\ProxmoxAPI;
-$api = new ProxmoxAPI;
-$machine = $api->getVMResourceUsage($order->data['node'], $order->data['vmid'])
+try {
+    $api = new \App\Services\Proxmox\ProxmoxAPI;
+    $machine = $api->getVMResourceUsage($order->data['node'], $order->data['vmid']);
+} catch(\Exception $error) {
+    $machine = false;
+}
 @endphp
+
+@if($machine)
 <span class="flex items-center text-1xl uppercase font-medium text-gray-900 dark:text-white mb-4">
     <span class="flex w-4 h-4 @if($machine['status'] == 'running') bg-emerald-600 @elseif($machine['status'] == 'stopped') bg-red-600 @else bg-orange-600 @endif  rounded-full mr-1.5 flex-shrink-0"></span>
     {{ $machine['status'] }}
@@ -80,3 +85,4 @@ $machine = $api->getVMResourceUsage($order->data['node'], $order->data['vmid'])
 // Usage: Start a timer for 10 seconds.
 setUptime(10);
 </script>
+@endif

@@ -20,7 +20,15 @@ class ProxmoxAPI
         
         if($response->failed())
         {
-            dd($response);
+            if($response->unauthorized() OR $response->forbidden()) {
+                throw new \Exception("[Proxmox] This action is unauthorized! Confirm that API token has the right permissions");
+            }
+
+            // dd($response);
+            if($response->serverError()) {
+                throw new \Exception("[Proxmox] Internal Server Error: {$response->status()}");
+            }
+
             throw new \Exception("[Proxmox] Failed to connect to the API. Ensure the API details and hostname are valid.");
         }
 
@@ -143,7 +151,15 @@ class ProxmoxAPI
      */
     public function suspendVM($node, $vmid)
     {
-        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/suspend");
+        if($node == 'terminated') {
+            throw new \Exception("[Proxmox] The server for this order was terminated");
+        }
+        
+        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/suspend", [
+            'node' => $node,
+            'vmid' => $vmid,
+            'todisk' => 1,
+        ]);
     }
 
     /**
@@ -151,7 +167,14 @@ class ProxmoxAPI
      */
     public function unsuspendVM($node, $vmid)
     {
-        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/resume");
+        if($node == 'terminated') {
+            throw new \Exception("[Proxmox] The server for this order was terminated");
+        }
+
+        return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/resume", [
+            'node' => $node,
+            'vmid' => $vmid,
+        ]);
     }
 
     /**
@@ -159,6 +182,74 @@ class ProxmoxAPI
      */
     public function terminateVM($node, $vmid)
     {
-        return $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
+        if($node == 'terminated') {
+            throw new \Exception("[Proxmox] The server for this order was terminated");
+        }
+
+        // attempt to gracefully stop a VM
+        $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/stop", ['timeout' => 10]);
+
+        sleep(10);
+
+        try {
+            // attempt to delete the VM
+            $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
+            return;
+        } catch(\Exception $error) {
+            // if delete fails, attempt to shutdown forcefully
+            $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/shutdown", ['forceStop' => 1]);
+        }
+
+        sleep(120);
+
+        try {
+            $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
+        } catch(\Exception $error) {
+            ErrorLog('proxmox::terminate::vm', "[Proxmox] We failed to terminate VM {$vmid} in node {$node} - Received error {$error->getMessage()}", 'CRITICAL');
+        }
+    }
+
+    /**
+     * Attempt to start a VM
+     */
+    public function startVM($node, $vmid) 
+    {
+        $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/start", [
+            'node' => $node,
+            'vmid' => $vmid,
+        ]);
+    }
+    
+    /**
+     * Attempt to stop a VM
+     */
+    public function stopVM($node, $vmid) 
+    {
+        $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/stop", [
+            'node' => $node,
+            'vmid' => $vmid,
+        ]);
+    }
+
+    /**
+     * Attempt to shutdown a VM
+     */
+    public function shutdownVM($node, $vmid) 
+    {
+        $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/shutdown", [
+            'node' => $node,
+            'vmid' => $vmid,
+        ]);
+    }
+
+    /**
+     * Attempt to reboot a VM
+     */
+    public function rebootVM($node, $vmid) 
+    {
+        $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/reboot", [
+            'node' => $node,
+            'vmid' => $vmid,
+        ]);
     }
 }

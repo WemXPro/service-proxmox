@@ -225,6 +225,24 @@ class Service implements ServiceInterface
     }
 
     /**
+     * Define buttons shown at order management page
+     *
+     * @return array
+     */
+    public static function setServiceButtons(Order $order): array
+    {
+        return [
+            [
+                "name" => "Login to Panel",
+                "color" => "primary",
+                "href" => settings('proxmox::hostname'),
+                "target" => "_blank", // optional
+            ],
+            // add more buttons
+        ];
+    }
+
+    /**
      * Init API connection
      */
     protected static function api()
@@ -348,5 +366,95 @@ class Service implements ServiceInterface
     {
         $VM = $this->order->data;
         self::api()->terminateVM($VM['node'], (int) $VM['vmid']);
+        
+        $this->order->update(['data' => ['node' => 'terminated', 'vmid' => 'terminated']]);
+    }
+
+    /**
+     * Email the password to the user again
+    */
+    public function resendPassword(Order $order)
+    {
+        if (!$order->canViewOrder()) {
+            return abort(403, 'You dont have permissions to access this resource');
+        }
+
+        try {
+            $proxmoxUser = $order->getExternalUser();
+            $this->emailDetails($order->user, $proxmoxUser->username, decrypt($proxmoxUser->password));
+        } catch(\Exception $error) {
+            ErrorLog('proxmox::resend-password', "[Proxmox] Failed to send {$order->user->email} their Proxmox Password | Received error {$error}");
+            return redirect()->back()->withError('Something went wrong, please try again.');
+        }
+
+        return redirect()->back()->withSuccess("We have emailed your password to {$order->user->email}");
+    }
+
+    /**
+     * Attempt to start a VM
+    */
+    public function startServer(Order $order)
+    {
+        try {
+            $VM = $order->data;
+            self::api()->startVM($VM['node'], (int) $VM['vmid']);
+        } catch(\Exception $error) {
+            return redirect()->back()->withError('Something went wrong, please try again.');
+        }
+
+        sleep(1);
+
+        return redirect()->back()->withSuccess('Starting your server...');
+    }
+
+    /**
+     * Attempt to stop a VM
+    */
+    public function stopServer(Order $order)
+    {
+        try {
+            $VM = $order->data;
+            self::api()->stopVM($VM['node'], (int) $VM['vmid']);
+        } catch(\Exception $error) {
+            return redirect()->back()->withError('Something went wrong, please try again.');
+        }
+
+        sleep(1);
+
+        return redirect()->back()->withSuccess('Stopping your server...');
+    }
+
+    /**
+     * Attempt to shutdown a VM
+    */
+    public function shutdownServer(Order $order)
+    {
+        try {
+            $VM = $order->data;
+            self::api()->shutdownVM($VM['node'], (int) $VM['vmid']);
+        } catch(\Exception $error) {
+            return redirect()->back()->withError('Something went wrong, please try again.');
+        }
+
+        sleep(1);
+
+        return redirect()->back()->withSuccess('Shutting down your server...');
+    }
+    
+    /**
+     * Attempt to reboot a VM
+    */
+    public function rebootServer(Order $order)
+    {
+        try {
+            $VM = $order->data;
+            self::api()->rebootVM($VM['node'], (int) $VM['vmid']);
+        } catch(\Exception $error) {
+            return redirect()->back()->withError('Something went wrong, please try again.');
+        }
+
+        sleep(1);
+
+        return redirect()->back()->withSuccess('Rebooting your server...');
     }
 }
