@@ -1,7 +1,7 @@
 {
     "name": "wemx/service-proxmox",
     "type": "laravel-module",
-    "description": "A proxmox service for developers",
+    "description": "A proxmox service for WemX",
     "authors": [
         {
             "name": "WemX",
