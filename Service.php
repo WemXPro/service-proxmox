@@ -243,6 +243,29 @@ class Service implements ServiceInterface
     }
 
     /**
+     * Define custom permissions for this service
+     *
+     * @return array
+     */
+    public static function permissions(): array
+    {
+        return [
+            'proxmox.server.start' => [
+                'description' => 'Permission to start a Proxmox VM from the dashboard',
+            ],
+            'proxmox.server.stop' => [
+                'description' => 'Permission to stop a Proxmox VM from the dashboard',
+            ],
+            'proxmox.server.shutdown' => [
+                'description' => 'Permission to shutdown a Proxmox VM from the dashboard',
+            ],
+            'proxmox.server.reboot' => [
+                'description' => 'Permission to reboot a Proxmox VM from the dashboard',
+            ],
+        ];
+    }
+
+    /**
      * Init API connection
      */
     protected static function api()
