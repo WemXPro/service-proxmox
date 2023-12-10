@@ -23,7 +23,7 @@ class ProxmoxAPI
                 throw new \Exception("[Proxmox] This action is unauthorized! Confirm that API token has the right permissions");
             }
 
-            dd($response);
+            // dd($response);
             if ($response->serverError()) {
                 throw new \Exception("[Proxmox] Internal Server Error: {$response->status()}");
             }
