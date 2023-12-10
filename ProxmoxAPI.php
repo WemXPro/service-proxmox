@@ -8,24 +8,23 @@ class ProxmoxAPI
 {
     /**
      * Init connection with API
-    */
+     */
     public function api($method, $endpoint, $data = [])
     {
-        $url = settings('proxmox::hostname'). '/api2/json' . $endpoint;
+        $url = settings('proxmox::hostname') . '/api2/json' . $endpoint;
         $response = Http::withHeaders([
-            'Authorization' => 'PVEAPIToken=' . settings('proxmox::token_id') . '=' . settings('encrypted::proxmox::token_secret'),
-            'Accept' => 'application/json',
-            'Content-Type' => 'application/json'
-        ])->$method($url, $data);
-        
-        if($response->failed())
-        {
-            if($response->unauthorized() OR $response->forbidden()) {
+                    'Authorization' => 'PVEAPIToken=' . settings('proxmox::token_id') . '=' . settings('encrypted::proxmox::token_secret'),
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ])->withoutVerifying()->$method($url, $data);
+
+        if ($response->failed()) {
+            if ($response->unauthorized() or $response->forbidden()) {
                 throw new \Exception("[Proxmox] This action is unauthorized! Confirm that API token has the right permissions");
             }
 
             // dd($response);
-            if($response->serverError()) {
+            if ($response->serverError()) {
                 throw new \Exception("[Proxmox] Internal Server Error: {$response->status()}");
             }
 
@@ -37,7 +36,7 @@ class ProxmoxAPI
 
     /**
      * Get the nodes as a Laravel collection
-    */
+     */
     public function getNodes()
     {
         return collect($this->api('get', '/nodes')->object()->data);
@@ -45,7 +44,7 @@ class ProxmoxAPI
 
     /**
      * Get the storage of a node groups as a Laravel collection
-    */
+     */
     public function getNodeStorage($node)
     {
         return collect($this->api('get', "/nodes/{$node}/storage")->object()->data);
@@ -53,21 +52,21 @@ class ProxmoxAPI
 
     /**
      * Get the storage of a node groups as a Laravel collection
-    */
+     */
     public function getNodeISOImages($node, $storage)
     {
         $response = $this->api('get', "/nodes/{$node}/storage/{$storage}/content")['data'];
         $contents = collect($response);
-        $isoImages = $contents->filter(function($item) {
+        $isoImages = $contents->filter(function ($item) {
             return $item['content'] == 'iso';
         })->pluck('volid', 'volid');  // Use ISO volid as both key and value for select options
-    
+
         return $isoImages->toArray();
     }
 
     /**
      * Get the storage groups as a Laravel collection
-    */
+     */
     public function getStorage()
     {
         return collect($this->api('get', '/storage')->object()->data);
@@ -75,7 +74,7 @@ class ProxmoxAPI
 
     /**
      * Get the pool groups as a Laravel collection
-    */
+     */
     public function getPools()
     {
         return collect($this->api('get', '/pools')->object()->data);
@@ -123,18 +122,18 @@ class ProxmoxAPI
     {
         $vmid = $this->api('get', '/cluster/nextid')['data'];
         $ide2 = ($data['vm_cdrom'] ?? '' == 'iso') ? ['ide2' => "{$data['iso_image']},media=cdrom"] : [];
-    
         $response = $this->api('post', "/nodes/{$node}/qemu", array_merge([
             'vmid' => $vmid,
             'cores' => $data['cores'] ?? 1,
             'sockets' => $data['sockets'] ?? 1,
             'memory' => $data['memory'] ?? 1024,
-            'scsi0' => "local-lvm:{$data['disk']}",
+            'scsi0' => $data['disk'],
             'ostype' => $data['os_type'] ?? 'l26',
         ], $ide2));
 
         return ['node' => $node, 'vmid' => $vmid];
     }
+
 
     /**
      * Get resource usage and status for a specific VM
@@ -142,7 +141,7 @@ class ProxmoxAPI
     public function getVMResourceUsage($node, $vmid)
     {
         $response = $this->api('get', "/nodes/{$node}/qemu/{$vmid}/status/current");
-        
+
         return $response->json()['data'];
     }
 
@@ -151,10 +150,10 @@ class ProxmoxAPI
      */
     public function suspendVM($node, $vmid)
     {
-        if($node == 'terminated') {
+        if ($node == 'terminated') {
             throw new \Exception("[Proxmox] The server for this order was terminated");
         }
-        
+
         return $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/suspend", [
             'node' => $node,
             'vmid' => $vmid,
@@ -167,7 +166,7 @@ class ProxmoxAPI
      */
     public function unsuspendVM($node, $vmid)
     {
-        if($node == 'terminated') {
+        if ($node == 'terminated') {
             throw new \Exception("[Proxmox] The server for this order was terminated");
         }
 
@@ -182,7 +181,7 @@ class ProxmoxAPI
      */
     public function terminateVM($node, $vmid)
     {
-        if($node == 'terminated') {
+        if ($node == 'terminated') {
             throw new \Exception("[Proxmox] The server for this order was terminated");
         }
 
@@ -195,7 +194,7 @@ class ProxmoxAPI
             // attempt to delete the VM
             $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
             return;
-        } catch(\Exception $error) {
+        } catch (\Exception $error) {
             // if delete fails, attempt to shutdown forcefully
             $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/shutdown", ['forceStop' => 1]);
         }
@@ -204,7 +203,7 @@ class ProxmoxAPI
 
         try {
             $this->api('delete', "/nodes/{$node}/qemu/{$vmid}");
-        } catch(\Exception $error) {
+        } catch (\Exception $error) {
             ErrorLog('proxmox::terminate::vm', "[Proxmox] We failed to terminate VM {$vmid} in node {$node} - Received error {$error->getMessage()}", 'CRITICAL');
         }
     }
@@ -212,18 +211,18 @@ class ProxmoxAPI
     /**
      * Attempt to start a VM
      */
-    public function startVM($node, $vmid) 
+    public function startVM($node, $vmid)
     {
         $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/start", [
             'node' => $node,
             'vmid' => $vmid,
         ]);
     }
-    
+
     /**
      * Attempt to stop a VM
      */
-    public function stopVM($node, $vmid) 
+    public function stopVM($node, $vmid)
     {
         $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/stop", [
             'node' => $node,
@@ -234,7 +233,7 @@ class ProxmoxAPI
     /**
      * Attempt to shutdown a VM
      */
-    public function shutdownVM($node, $vmid) 
+    public function shutdownVM($node, $vmid)
     {
         $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/shutdown", [
             'node' => $node,
@@ -245,7 +244,7 @@ class ProxmoxAPI
     /**
      * Attempt to reboot a VM
      */
-    public function rebootVM($node, $vmid) 
+    public function rebootVM($node, $vmid)
     {
         $this->api('post', "/nodes/{$node}/qemu/{$vmid}/status/reboot", [
             'node' => $node,
