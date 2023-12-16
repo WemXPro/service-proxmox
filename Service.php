@@ -176,7 +176,7 @@ class Service implements ServiceInterface
                     "type" => "number",
                     "default_value" => 100,
                     "save_on_change" => true,
-                    "rules" => ['required', 'numeric'], // todo add custom rule to check if the clone template exists
+                    "rules" => ['required', 'numeric', new Rules\CloneVMExists($package->data('node'))], // todo add custom rule to check if the clone template exists
                 ],
                 [
                     "col" => "col-12",
@@ -185,7 +185,6 @@ class Service implements ServiceInterface
                     "description" => "Do you want to allow the user to select the ISO image at checkout?",
                     "type" => "select",
                     "options" => [
-                        2 => 'No, use the iso image and os type from the clone template',
                         1 => 'Yes, let user select the iso image and os type at checkout',
                         0 => 'No, setup the iso image and os type below',
                     ],
@@ -195,7 +194,7 @@ class Service implements ServiceInterface
                 ]
             ]);
 
-            if($package->data('selectable_iso_template', 2) == 1) {
+            if($package->data('selectable_iso_template')) {
                 $config = array_merge($config, [
                     [
                     "col" => "col-12",
@@ -208,13 +207,13 @@ class Service implements ServiceInterface
                     "rules" => ['required'],
                     ],
                 ]);
-            } elseif($package->data('selectable_iso_template', 2) == 0) {
+            } else{
                 $config = array_merge($config, [
                     [
                         "col" => "col-12",
-                        "key" => "os_template",
-                        "name" => "OS Template",
-                        "description" => "Select the OS template for the VM",
+                        "key" => "image",
+                        "name" => "Image",
+                        "description" => "Select the ISO Image for the VM",
                         "type" => "select",
                         "options" => $images,
                         "rules" => ['required'],
@@ -288,7 +287,6 @@ class Service implements ServiceInterface
         $config = [];
 
         if($package->data('type') == 'lxc') {
-
             $osTemplates = collect($package->data('os_templates'))->mapWithKeys(function ($template, int $key) {
                 return [$template => $template];
             });
@@ -325,6 +323,26 @@ class Service implements ServiceInterface
                     "rules" => ['required'],
                 ],
             ]);
+        }
+
+        if($package->data('type') == 'qemu') {
+            $images = collect($package->data('iso_images'))->mapWithKeys(function ($image, int $key) {
+                return [$image => $image];
+            });
+
+            if($package->data('selectable_iso_template', 2) == 1) {
+                $config = array_merge($config, [
+                    [
+                        "col" => "w-full mb-4",
+                        "key" => "image",
+                        "name" => "Operating System",
+                        "description" => "Please select the operating system image you wish to use",
+                        "type" => "select",
+                        "options" => $images,
+                        "rules" => ['required'],
+                        ],
+                ]);
+            }
         }
 
         return $config;
@@ -407,13 +425,14 @@ class Service implements ServiceInterface
 
         // if type is qemu, create a VM
         if($package->data('type', 'qemu') == 'qemu') { 
+            $cdrom = ($package->data('selectable_iso_template')) ? $order->option('image') : $package->data('image');
             $response = self::api()->createVM($package->data('node'), [
                 'cores' => $package->data('cpu_cores', 1),
                 'sockets' => $package->data('cpu_sockets', 1),
                 'memory' => $package->data('memory_size', 1024),
                 'disk' => $package->data('disk_size', 32),
                 'os_type' => $package->data('ostype', 'l26'),
-                'vm_cdrom' =>  $package->data('vm_cdrom'),
+                'cdrom' =>  $cdrom,
                 'iso_image' => $package->data('image'),
                 'storage' => $package->data('storage'),
                 'clone_template_id' => $package->data('clone_template_id'),

@@ -23,7 +23,7 @@ class ProxmoxAPI
                 throw new \Exception("[Proxmox] This action is unauthorized! Confirm that API token has the right permissions");
             }
 
-            dd($response, $response->json());
+            // dd($response, $response->json());
             if ($response->serverError()) {
                 throw new \Exception("[Proxmox] Internal Server Error: {$response->status()}");
             }
@@ -248,7 +248,8 @@ class ProxmoxAPI
             'sockets' => $data['sockets'] ?? 1,
             'memory' => $data['memory'] ?? 1024,
             'scsi0' => "{$data['storage']}:{$data['disk']}",
-            // 'ide2' => "{$data['storage']}:iso/{$data['iso']},media=cdrom",
+            'cdrom' => "{$data['cdrom']}",
+            // 'ide2' => "{$data['cdrom']},media=cdrom",
             'onboot' => 1,
         ]);
 
