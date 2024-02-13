@@ -1,7 +1,7 @@
 @php
 try {
     $api = new \App\Services\Proxmox\ProxmoxAPI;
-    $machine = $api->getVMResourceUsage($order->data['node'], $order->data['vmid']);
+    $machine = $api->getVMResourceUsage($order->data['node'], $order->data['vmid'], $order->data['type'] ?? 'qemu');
 } catch(\Exception $error) {
     $machine = false;
 }

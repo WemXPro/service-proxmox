@@ -97,10 +97,23 @@ class Service implements ServiceInterface
 
         $images = self::api()->getNodeISOImages($package->data('node', $nodes->first()), $package->data('storage', 'local'));
 
-        return 
+        $config =
         [
             [
-                "col" => "col-4",
+                "col" => "col-12",
+                "key" => "type",
+                "name" => "VM Type",
+                "description" => "Please select the type of the VM",
+                "type" => "select",
+                "save_on_change" => true,
+                "options" => [
+                    'qemu' => 'QEMU/KVM Virtual Machine',
+                    'lxc' => 'Linux Container',
+                ],
+                "rules" => ['required'],
+            ],
+            [
+                "col" => "col-12",
                 "key" => "node",
                 "name" => "Node",
                 "description" => "Select the VM node",
@@ -110,71 +123,14 @@ class Service implements ServiceInterface
                 "rules" => ['required'],
             ],
             [
-                "col" => "col-4",
-                "key" => "pool",
-                "name" => "Resource Pool",
-                "description" => "Select the resource pool for the node",
-                "type" => "select",
-                "options" => $pools,
-                "rules" => ['nullable'],
-            ],
-            [
-                "col" => "col-4",
-                "key" => "ostype",
-                "name" => "OS Type",
-                "description" => "Select the OS Type",
-                "type" => "select",
-                "options" => [
-                    'l24' => 'Linux 2.4 Kernel',
-                    'l26' => 'Linux 6.x - 2.6 Kernel',
-                    'other' => 'other',
-                    'solaris' => 'solaris',
-                    'w2k' => 'Windows 2000',
-                    'w2k3' => 'Windows 2003',
-                    'w2k8' => 'Windows 2008',
-                    'win7' => 'Windows 7',
-                    'win8' => 'Windows 8',
-                    'win10' => 'Windows 10',
-                    'win11' => 'Windows 11',
-                    'wvista' => 'Windows Vista',
-                    'wxp' => 'Windows XP',
-                ],
-                'default_value' => 'l26',
-                "rules" => ['required'],
-            ],
-            [
-                "col" => "col-4",
+                "col" => "col-12",
                 "key" => "storage",
                 "name" => "Storage",
-                "description" => "Select the storage for the node",
+                "description" => "Enter the storage where you wish to load assets from such as images and templates",
                 "type" => "select",
                 "options" => $storage,
-                "rules" => ['nullable'],
-                "save_on_change" => true,
-            ],
-            [
-                "col" => "col-4",
-                "key" => "vm_cdrom",
-                "name" => "CD/DVD Configuration",
-                "description" => "Configure CD/DVD media for the VM",
-                "type" => "select",
-                "options" => [
-                    '' => 'Do not use any media',
-                    'cdrom' => 'Use physical CD/DVD Drive',
-                    'iso' => 'Use CD/DVD disc image file (iso)',
-                ],
-                "default_value" => 'iso',
-                "rules" => ['nullable'],
-                "save_on_change" => true,
-            ],
-            [
-                "col" => "col-4",
-                "key" => "image",
-                "name" => "ISO Image",
-                "description" => "Select the ISO image",
-                "type" => "select",
-                "options" => $images,
-                "rules" => ['nullable'],
+                "default_value" => "local",
+                "rules" => ['required'],
             ],
             [
                 "key" => "disk_size",
@@ -209,6 +165,113 @@ class Service implements ServiceInterface
                 "rules" => ['required', 'numeric'],
             ],
         ];
+
+        if($package->data('type') == 'qemu') {
+            $config = array_merge($config, [
+                [
+                    "col" => "col-12",
+                    "key" => "clone_template_id",
+                    "name" => "Clone Template ID",
+                    "description" => "Enter the ID of the VM template you want to clone the clone must be of type {$package->data('type')}",
+                    "type" => "number",
+                    "default_value" => 100,
+                    "save_on_change" => true,
+                    "rules" => ['required', 'numeric', new Rules\CloneVMExists($package->data('node'))], // todo add custom rule to check if the clone template exists
+                ],
+                [
+                    "col" => "col-12",
+                    "key" => "selectable_iso_template",
+                    "name" => "Allow Selectable ISO image at Checkout",
+                    "description" => "Do you want to allow the user to select the ISO image at checkout?",
+                    "type" => "select",
+                    "options" => [
+                        1 => 'Yes, let user select the iso image and os type at checkout',
+                        0 => 'No, setup the iso image and os type below',
+                    ],
+                    "default_value" => 1,
+                    "save_on_change" => true,
+                    "rules" => ['required'],
+                ]
+            ]);
+
+            if($package->data('selectable_iso_template')) {
+                $config = array_merge($config, [
+                    [
+                    "col" => "col-12",
+                    "key" => "iso_images[]",
+                    "name" => "Selectable ISO Templates",
+                    "description" => "Enter the ISO images that are selectable at checkout by the user",
+                    "type" => "select",
+                    "multiple" => true,
+                    "options" => $images,
+                    "rules" => ['required'],
+                    ],
+                ]);
+            } else{
+                $config = array_merge($config, [
+                    [
+                        "col" => "col-12",
+                        "key" => "image",
+                        "name" => "Image",
+                        "description" => "Select the ISO Image for the VM",
+                        "type" => "select",
+                        "options" => $images,
+                        "rules" => ['required'],
+                    ],
+                ]);
+            }
+        }
+
+        if($package->data('type') == 'lxc') {
+            $osTemplates = self::api()->getOSTemplates($package->data('node', $nodes->first()), $package->data('storage', 'local'));
+
+            $config = array_merge($config, [
+                [
+                    "col" => "col-12",
+                    "key" => "selectable_os_template",
+                    "name" => "Allow Selectable OS Templates at Checkout",
+                    "description" => "Do you want to allow the user to select the OS template at checkout?",
+                    "type" => "select",
+                    "options" => [
+                        1 => 'Yes, let user select the OS template at checkout',
+                        0 => 'No, select the OS template below',
+                    ],
+                    "default_value" => 1,
+                    "save_on_change" => true,
+                    "rules" => ['required', 'boolean'],
+                ]
+            ]);
+
+            if($package->data('selectable_os_template', true)) {
+                $config = array_merge($config, [
+                    [
+                    "col" => "col-12",
+                    "key" => "os_templates[]",
+                    "name" => "Selectable OS Templates",
+                    "description" => "Enter the OS templates that are selectable at checkout by the user",
+                    "type" => "select",
+                    "multiple" => true,
+                    "options" => $osTemplates,
+                    "rules" => ['required'],
+                    ],
+                ]);
+            } else {
+                $config = array_merge($config, [
+                    [
+                        "col" => "col-12",
+                        "key" => "os_template",
+                        "name" => "OS Template",
+                        "description" => "Select the OS template for the VM",
+                        "type" => "select",
+                        "options" => $osTemplates,
+                        "rules" => ['required'],
+                    ],
+                ]);
+            }
+            
+        }
+
+        return $config;
     }
 
     /**
@@ -221,7 +284,68 @@ class Service implements ServiceInterface
      */
     public static function setCheckoutConfig(Package $package): array
     {
-        return [];
+        $config = [];
+
+        if($package->data('type') == 'lxc') {
+            $osTemplates = collect($package->data('os_templates'))->mapWithKeys(function ($template, int $key) {
+                return [$template => $template];
+            });
+
+            if($package->data('selectable_os_template', true)) {
+                $config = array_merge($config, [
+                    [
+                        "col" => "w-full mb-4",
+                        "key" => "os_template",
+                        "name" => "Operating System Template",
+                        "description" => "Please select the operating system template you wish to use",
+                        "type" => "select",
+                        "options" => $osTemplates,
+                        "rules" => ['required'],
+                        ],
+                ]);
+            }
+
+            $config = array_merge($config, [
+                [
+                    "col" => "w-full mb-4",
+                    "key" => "password",
+                    "name" => "Root Password",
+                    "description" => "Please enter the password for the root user of the server",
+                    "type" => "password",
+                    "rules" => ['required', 'confirmed', 'min:5'],
+                ],
+                [
+                    "col" => "w-full mb-4",
+                    "key" => "password_confirmation",
+                    "name" => "Confirm Password",
+                    "description" => "Please confirm the password for the root user",
+                    "type" => "password",
+                    "rules" => ['required'],
+                ],
+            ]);
+        }
+
+        if($package->data('type') == 'qemu') {
+            $images = collect($package->data('iso_images'))->mapWithKeys(function ($image, int $key) {
+                return [$image => $image];
+            });
+
+            if($package->data('selectable_iso_template', 2) == 1) {
+                $config = array_merge($config, [
+                    [
+                        "col" => "w-full mb-4",
+                        "key" => "image",
+                        "name" => "Operating System",
+                        "description" => "Please select the operating system image you wish to use",
+                        "type" => "select",
+                        "options" => $images,
+                        "rules" => ['required'],
+                        ],
+                ]);
+            }
+        }
+
+        return $config;
     }
 
     /**
@@ -281,7 +405,7 @@ class Service implements ServiceInterface
         try {
             self::api()->getNodes()->all();
         } catch(\Exception $error) {
-            return redirect()->back()->withError("Failed to connect to Proxmox. <br><br>[Proxmox] {$error->getMessage()}");
+            return redirect()->back()->withError("Failed to connect to Proxmox. <br><br>{$error->getMessage()}");
         }
 
         return redirect()->back()->withSuccess("Successfully connected with Proxmox");
@@ -299,15 +423,34 @@ class Service implements ServiceInterface
         $user = $this->order->user;
         $order = $this->order;
 
-        $response = self::api()->createVM($package->data('node'), [
-            'cores' => $package->data('cpu_cores', 1),
-            'sockets' => $package->data('cpu_sockets', 1),
-            'memory' => $package->data('memory_size', 1024),
-            'disk' => $package->data('disk_size', 32),
-            'os_type' => $package->data('ostype', 'l26'),
-            'vm_cdrom' =>  $package->data('vm_cdrom'),
-            'iso_image' => $package->data('image'),
-        ]);
+        // if type is qemu, create a VM
+        if($package->data('type', 'qemu') == 'qemu') { 
+            $cdrom = ($package->data('selectable_iso_template')) ? $order->option('image') : $package->data('image');
+            $response = self::api()->createVM($package->data('node'), [
+                'cores' => $package->data('cpu_cores', 1),
+                'sockets' => $package->data('cpu_sockets', 1),
+                'memory' => $package->data('memory_size', 1024),
+                'disk' => $package->data('disk_size', 32),
+                'os_type' => $package->data('ostype', 'l26'),
+                'cdrom' =>  $cdrom,
+                'iso_image' => $package->data('image'),
+                'storage' => $package->data('storage'),
+                'clone_template_id' => $package->data('clone_template_id'),
+            ]);
+        }
+
+        // if type is lxc, create a CT
+        if($package->data('type') == 'lxc') {
+            $osTemplate = $package->data('selectable_os_template', true) ? $order->option('os_template') : $package->data('os_template');
+            $response = self::api()->createCT($package->data('node'), [
+                'cores' => $package->data('cpu_cores', 1),
+                'password' => $order->option('password'),
+                'memory' => $package->data('memory_size', 1024),
+                'disk' => $package->data('disk_size', 32),
+                'os_template' => $osTemplate,
+                'storage' => $package->data('storage'),
+            ]);
+        }
 
         // store the VMID
         $order->update(['data' => $response]);
@@ -362,8 +505,15 @@ class Service implements ServiceInterface
     */
     public function suspend(array $data = [])
     {
-        $VM = $this->order->data;
-        self::api()->suspendVM($VM['node'], (int) $VM['vmid']);
+        $type = $this->orderData('type', 'qemu');
+        $node = $this->orderData('node');
+        $vmid = (int) $this->orderData('vmid');
+
+        if($type == 'qemu') {
+           return self::api()->suspendVM($node, $vmid);
+        }
+        
+        self::api()->suspendCT($node, $vmid);
     }
 
     /**
@@ -375,8 +525,15 @@ class Service implements ServiceInterface
     */
     public function unsuspend(array $data = [])
     {
-        $VM = $this->order->data;
-        self::api()->unsuspendVM($VM['node'], (int) $VM['vmid']);
+        $type = $this->orderData('type', 'qemu');
+        $node = $this->orderData('node');
+        $vmid = (int) $this->orderData('vmid');
+
+        if($type == 'qemu') {
+            return self::api()->unsuspendVM($node, $vmid);
+        }
+        
+        self::api()->unsuspendCT($node, $vmid);
     }
 
     /**
@@ -387,10 +544,21 @@ class Service implements ServiceInterface
     */
     public function terminate(array $data = [])
     {
-        $VM = $this->order->data;
-        self::api()->terminateVM($VM['node'], (int) $VM['vmid']);
+        $type = $this->orderData('type', 'qemu');
+        $node = $this->orderData('node');
+        $vmid = (int) $this->orderData('vmid');
+
+        if($type == 'qemu') {
+            self::api()->terminateVM($node, $vmid);
+        } else {
+            self::api()->terminateCT($node, $vmid);
+        }
         
         $this->order->update(['data' => ['node' => 'terminated', 'vmid' => 'terminated']]);
+    }
+
+    protected function orderData($key, $default = null) {
+        return $this->order->data[$key] ?? $default;
     }
 
     /**
@@ -420,7 +588,7 @@ class Service implements ServiceInterface
     {
         try {
             $VM = $order->data;
-            self::api()->startVM($VM['node'], (int) $VM['vmid']);
+            self::api()->startVM($VM['node'], (int) $VM['vmid'], $VM['type'] ?? 'qemu');
         } catch(\Exception $error) {
             return redirect()->back()->withError('Something went wrong, please try again.');
         }
@@ -437,7 +605,7 @@ class Service implements ServiceInterface
     {
         try {
             $VM = $order->data;
-            self::api()->stopVM($VM['node'], (int) $VM['vmid']);
+            self::api()->stopVM($VM['node'], (int) $VM['vmid'], $VM['type'] ?? 'qemu');
         } catch(\Exception $error) {
             return redirect()->back()->withError('Something went wrong, please try again.');
         }
@@ -454,7 +622,7 @@ class Service implements ServiceInterface
     {
         try {
             $VM = $order->data;
-            self::api()->shutdownVM($VM['node'], (int) $VM['vmid']);
+            self::api()->shutdownVM($VM['node'], (int) $VM['vmid'], $VM['type'] ?? 'qemu');
         } catch(\Exception $error) {
             return redirect()->back()->withError('Something went wrong, please try again.');
         }
@@ -471,7 +639,7 @@ class Service implements ServiceInterface
     {
         try {
             $VM = $order->data;
-            self::api()->rebootVM($VM['node'], (int) $VM['vmid']);
+            self::api()->rebootVM($VM['node'], (int) $VM['vmid'], $VM['type'] ?? 'qemu');
         } catch(\Exception $error) {
             return redirect()->back()->withError('Something went wrong, please try again.');
         }
