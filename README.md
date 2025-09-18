@@ -1,8 +1,11 @@
-# Proxmox integration for WemX
-Start selling Proxmox VMs using WemX
+Proxmox Integration for WemX
 
-Users can buy a VM and WemX will create it using the API, in addition WemX will create a user account on the Proxmox panel and give the user access to manage their server directly on the Proxmox Panel.
+Note: The new and improved Proxmox version is currently in beta. It’s not fully stable yet, but it can be used publicly. Just be aware that order processing (such as cloning) may take a few minutes in this version.
 
-Manage power actions from WemX, such as start, stop, shutdown and reboot the VM. WemX also displays the resources being used by the VM such as Memory, disk space, CPU etc...
+Start Selling Proxmox VMs with WemX
+
+With this integration, users can purchase a VM, and WemX will automatically create it using the Proxmox API. In addition, WemX will generate a user account on the Proxmox panel and grant the customer direct access to manage their server from there.
+
+You can also manage power actions directly from WemX—such as starting, stopping, shutting down, and rebooting the VM. WemX further provides insights into VM resource usage, including memory, disk space, CPU, and more.
 
 ![image](https://github.com/WemXPro/service-proxmox/assets/58806240/3b9cd437-0267-4302-98a4-c7732afb5259)
