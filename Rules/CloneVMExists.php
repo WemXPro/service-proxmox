@@ -8,9 +8,9 @@ use App\Services\Proxmox\ProxmoxAPI;
 
 class CloneVMExists implements ValidationRule
 {
-    public $node;
+    public string $node;
 
-    public function __construct($node)
+    public function __construct(string $node)
     {
         $this->node = $node;
     }
@@ -20,7 +20,7 @@ class CloneVMExists implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (!$this->cloneVmExists($value)) {
+        if (!$this->cloneVmExists((string) $value)) {
             $fail("The clone vm {$value} template does not exist in node {$this->node}.");
         }
     }
@@ -32,7 +32,7 @@ class CloneVMExists implements ValidationRule
     {
         $proxmox = new ProxmoxAPI();
         try {
-            $proxmox->getVMResourceUsage($this->node, $value);
+            $proxmox->getVMResourceUsage($this->node, (int) $value);
             return true;
         } catch (\Exception $e) {
             return false;
