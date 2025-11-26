@@ -27,7 +27,7 @@ try {
                     @endif
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                            {{ $order->data['type'] == 'lxc' ? 'Container' : 'Virtual Machine' }} #{{ $order->data['vmid'] }}
+                            {{ ($order->data['type'] ?? 'qemu') == 'lxc' ? 'Container' : 'Virtual Machine' }} #{{ $order->data['vmid'] }}
                         </h1>
                         <p class="text-sm text-gray-500 dark:text-gray-400">Node: {{ $order->data['node'] }}</p>
                     </div>
@@ -242,7 +242,7 @@ try {
                         <div>
                             <dt class="text-sm font-medium text-gray-700 dark:text-gray-300">VM Type</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                                {{ $order->data['type'] == 'lxc' ? 'LXC Container' : 'QEMU Virtual Machine' }}
+                                {{ ($order->data['type'] ?? 'qemu') == 'lxc' ? 'LXC Container' : 'QEMU Virtual Machine' }}
                             </dd>
                         </div>
 
